@@ -4,7 +4,7 @@ BANS Home is a family inventory and shopping assistant designed for the Balasuri
 
 ## Install the Android prototype
 
-1. Copy `BANS-Home-v0.3-debug.apk` to an Android phone.
+1. Copy `BANS-Home-v0.4-debug.apk` to an Android phone.
 2. Open the file on the phone and allow **Install unknown apps** for the app used to open it (Files, Chrome, Drive, etc.).
 3. Install and open **BANS Home**.
 4. Choose the device name, such as **Father's phone** or **Mother's phone**.
@@ -26,6 +26,7 @@ This is a development-signed APK for family testing, not a Play Store release.
 - Expired, expiring-soon, and low-stock dashboard.
 - Multiple shopping lists, check-off controls, low-stock recommendations, and purchase-pattern starter suggestions.
 - Spending summaries by category/outcome plus inventory and waste value.
+- Secure family synchronization using one shared family code. Inventory, shopping lists, and the device audit trail update across Android and iPhone devices.
 
 ## Install on an iPhone
 
@@ -34,9 +35,15 @@ Open the live GitHub Pages address in Safari, tap **Share**, then **Add to Home 
 - Large touch targets and a simple five-tab layout for elderly family members.
 - Offline local storage and installable PWA build for future iPhone deployment.
 
-## Important prototype boundary
+## Data storage and free hosting
 
-Data is currently stored on each device separately. Device names are recorded with edits, but changes do **not yet sync between phones**. Family-wide live sync requires the shared-household backend described in `REQUIREMENTS.md`.
+Each device keeps an offline copy in its private browser/app storage. After a family code is connected, shared inventory, shopping lists, and activity are also stored in the Firebase project `bans-home-akila-101` in the Mumbai Firestore region. Security rules restrict every signed-in identity to its own household path. Device name, language, and notification preference remain local to each device.
+
+The project uses Firebase's no-billing Spark plan and GitHub Pages. A typical family of 8–12 is far below the included quotas. If a free quota is ever exhausted, Firebase rejects additional usage instead of charging because no billing account is attached.
+
+On the first phone, open **Settings → Family sync** and choose a private family code of at least eight characters. Use exactly the same code on every other family phone. There are no separate personal accounts.
+
+## Important prototype boundary
 
 Live supermarket prices are also a production-stage integration. Each supermarket needs a reliable permitted data source (official API/feed where available, otherwise a maintained retailer adapter). The current prototype contains the price fields and UI foundation but does not claim live prices.
 
@@ -60,7 +67,7 @@ Open the native project with `npm run android:open`. The Android application ID 
 ## Verification completed
 
 - Production web/PWA build passes.
-- Expiry-rule unit tests pass (3/3).
+- All automated tests pass (8/8).
 - Native Android Gradle build passes.
-- APK installs successfully in the Android 14 emulator.
-- Clean first launch, device setup, and dashboard were visually verified.
+- APK v0.4 installs successfully in the Android 14 emulator.
+- Family synchronization UI and Firestore authorization rules were verified, including rejection of cross-household reads.

@@ -25,7 +25,10 @@ export default defineConfig({
           { src: 'bans-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,woff2}'] },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
     }),
   ],
 })

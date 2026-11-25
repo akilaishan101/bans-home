@@ -97,6 +97,17 @@
 .setting-row > div { display: grid; gap: 4px; } .setting-row small { color: var(--muted); } .setting-row p { margin: 0; color: #8b958f; font-size: 12px; }
 .setting-row input { border: 0; border-bottom: 1px solid transparent; outline: 0; font-weight: 750; color: var(--ink); background: transparent; max-width: 320px; }
 .setting-row input:focus { border-color: var(--forest); } .setting-button { width: 100%; border: 0; background: transparent; text-align: left; color: var(--ink); }
+.family-sync-card { padding-bottom: 18px; }
+.family-code-form { display: grid; gap: 8px; padding: 14px 0 4px; }
+.family-code-form label { color: var(--muted); font-size: 12px; font-weight: 700; }
+.family-code-form > div { display: flex; gap: 8px; }
+.family-code-form input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 12px; padding: 12px; outline: 0; }
+.family-code-form input:focus { border-color: var(--forest); box-shadow: 0 0 0 3px rgba(31,107,79,.08); }
+.family-code-form button, .disconnect-button { border: 0; border-radius: 12px; padding: 11px 16px; background: var(--forest); color: white; font-weight: 750; }
+.family-code-form button:disabled, .disconnect-button:disabled { opacity: .55; cursor: default; }
+.family-code-form p, .sync-message { margin: 0; color: var(--muted); font-size: 12px; }
+.disconnect-button { width: 100%; margin-top: 14px; background: #eef4f0; color: var(--forest); }
+.sync-message.error { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #fff2f0; color: var(--red); }
 .segmented { display: flex !important; flex-direction: row !important; width: fit-content; padding: 3px; border-radius: 10px; background: #eef2ef; }
 .segmented button { border: 0; border-radius: 8px; padding: 7px 12px; color: var(--muted); background: transparent; } .segmented button.active { color: var(--forest); background: white; box-shadow: 0 2px 8px rgba(35,55,43,.1); }
 .activity-list { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 0 18px; }

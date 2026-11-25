@@ -1,6 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import localforage from 'localforage'
 import { createInitialData } from '../data/demo'
+import {
+  cloudConfigured,
+  connectFamily as connectCloudFamily,
+  disconnectFamily as disconnectCloudFamily,
+  observeCloudSession,
+  saveInventoryItem,
+  saveShoppingItem,
+  saveShoppingList,
+  subscribeToHousehold,
+} from '../services/cloudSync'
 import { scheduleExpiryNotifications } from '../services/notifications'
 import { getExpiryLevel } from '../utils/expiry'
 import type { AppData, InventoryItem, NewInventoryItem, ShoppingList } from '../types'
@@ -9,6 +19,9 @@ const STORAGE_KEY = 'bans-home-data-v1'
 
 interface AppContextValue extends AppData {
   ready: boolean
+  cloud: { configured: boolean; connected: boolean; syncing: boolean; error: string }
+  connectFamily: (code: string) => Promise<void>
+  disconnectFamily: () => Promise<void>
   setDeviceName: (name: string) => void
   setLanguage: (language: 'en' | 'si') => void
   addInventoryItem: (item: NewInventoryItem) => void
@@ -25,6 +38,7 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(() => createInitialData())
   const [ready, setReady] = useState(false)
+  const [cloud, setCloud] = useState({ configured: cloudConfigured, connected: false, syncing: false, error: '' })
 
   useEffect(() => {
     let active = true
@@ -61,6 +75,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [data, ready])
 
   useEffect(() => {
+    if (!ready || !cloudConfigured) return
+    let stopHousehold: (() => void) | undefined
+    const stopSession = observeCloudSession((user) => {
+      stopHousehold?.()
+      stopHousehold = undefined
+      if (!user) {
+        setCloud((current) => ({ ...current, connected: false, syncing: false }))
+        return
+      }
+      setCloud((current) => ({ ...current, connected: true, syncing: true, error: '' }))
+      stopHousehold = subscribeToHousehold(user, {
+        inventory: (inventory) => setData((current) => ({ ...current, inventory })),
+        shoppingLists: (shoppingLists) => setData((current) => ({ ...current, shoppingLists })),
+        auditLog: (auditLog) => {
+          setData((current) => ({ ...current, auditLog }))
+          setCloud((current) => ({ ...current, syncing: false }))
+        },
+        error: (error) => setCloud((current) => ({ ...current, syncing: false, error })),
+      })
+    })
+    return () => { stopSession(); stopHousehold?.() }
+  }, [ready])
+
+  useEffect(() => {
     if (!ready || !data.settings.notificationsEnabled) return
     void scheduleExpiryNotifications(data.inventory).catch((error: unknown) => {
       console.warn('BANS Home could not refresh expiry notifications.', error)
@@ -77,6 +115,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     id: crypto.randomUUID(), action, detail, stamp: stamp(),
   }), [stamp])
 
+  const reportCloudError = useCallback((error: unknown) => {
+    setCloud((current) => ({ ...current, syncing: false, error: error instanceof Error ? error.message : 'Cloud sync failed.' }))
+  }, [])
+
+  const connectFamily = useCallback(async (code: string) => {
+    setCloud((current) => ({ ...current, syncing: true, error: '' }))
+    try {
+      await connectCloudFamily(code, data)
+      setCloud((current) => ({ ...current, connected: true, syncing: false }))
+    } catch (error) {
+      reportCloudError(error)
+      throw error
+    }
+  }, [data, reportCloudError])
+
+  const disconnectFamily = useCallback(async () => {
+    setCloud((current) => ({ ...current, syncing: true, error: '' }))
+    try {
+      await disconnectCloudFamily()
+      setCloud((current) => ({ ...current, connected: false, syncing: false }))
+    } catch (error) {
+      reportCloudError(error)
+    }
+  }, [reportCloudError])
+
   const setDeviceName = (deviceName: string) => setData((current) => ({
     ...current,
     settings: { ...current.settings, deviceName },
@@ -90,47 +153,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addInventoryItem = (input: NewInventoryItem) => setData((current) => {
     const now = stamp()
     const item: InventoryItem = { ...input, id: crypto.randomUUID(), status: 'available', created: now, updated: now }
+    const audit = log('Added item', `${item.name} · ${item.quantity} ${item.unit}`)
+    void saveInventoryItem(item, audit).catch(reportCloudError)
     return {
       ...current,
       inventory: [item, ...current.inventory],
-      auditLog: [log('Added item', `${item.name} · ${item.quantity} ${item.unit}`), ...current.auditLog].slice(0, 100),
+      auditLog: [audit, ...current.auditLog].slice(0, 100),
     }
   })
 
   const updateItemStatus = (id: string, status: InventoryItem['status']) => setData((current) => {
     const item = current.inventory.find((candidate) => candidate.id === id)
     if (!item) return current
+    const updated = { ...item, status, updated: stamp() }
+    const audit = log(status === 'wasted' ? 'Marked wasted' : 'Marked used', item.name)
+    void saveInventoryItem(updated, audit).catch(reportCloudError)
     return {
       ...current,
-      inventory: current.inventory.map((candidate) => candidate.id === id ? { ...candidate, status, updated: stamp() } : candidate),
-      auditLog: [log(status === 'wasted' ? 'Marked wasted' : 'Marked used', item.name), ...current.auditLog].slice(0, 100),
+      inventory: current.inventory.map((candidate) => candidate.id === id ? updated : candidate),
+      auditLog: [audit, ...current.auditLog].slice(0, 100),
     }
   })
 
   const createShoppingList = (name: string) => setData((current) => {
     const now = stamp()
     const list: ShoppingList = { id: crypto.randomUUID(), name, items: [], created: now, updated: now }
-    return { ...current, shoppingLists: [...current.shoppingLists, list], auditLog: [log('Created list', name), ...current.auditLog] }
+    const audit = log('Created list', name)
+    void saveShoppingList(list, audit).catch(reportCloudError)
+    return { ...current, shoppingLists: [...current.shoppingLists, list], auditLog: [audit, ...current.auditLog] }
   })
 
-  const addShoppingItem = (listId: string, name: string, source: 'manual' | 'low-stock' | 'recommendation' = 'manual', estimatedPrice?: number) => setData((current) => ({
-    ...current,
-    shoppingLists: current.shoppingLists.map((list) => list.id === listId ? {
-      ...list,
-      updated: stamp(),
-      items: [...list.items, { id: crypto.randomUUID(), name, quantity: 1, unit: 'item', checked: false, estimatedPrice, source, addedBy: stamp() }],
-    } : list),
-    auditLog: [log('Added to shopping list', name), ...current.auditLog].slice(0, 100),
-  }))
+  const addShoppingItem = (listId: string, name: string, source: 'manual' | 'low-stock' | 'recommendation' = 'manual', estimatedPrice?: number) => setData((current) => {
+    const existingList = current.shoppingLists.find((list) => list.id === listId)
+    if (!existingList) return current
+    const item = { id: crypto.randomUUID(), name, quantity: 1, unit: 'item', checked: false, estimatedPrice, source, addedBy: stamp() }
+    const list = { ...existingList, updated: stamp(), items: [...existingList.items, item] }
+    const audit = log('Added to shopping list', name)
+    void saveShoppingItem(listId, item, list, audit).catch(reportCloudError)
+    return {
+      ...current,
+      shoppingLists: current.shoppingLists.map((candidate) => candidate.id === listId ? list : candidate),
+      auditLog: [audit, ...current.auditLog].slice(0, 100),
+    }
+  })
 
-  const toggleShoppingItem = (listId: string, itemId: string) => setData((current) => ({
-    ...current,
-    shoppingLists: current.shoppingLists.map((list) => list.id === listId ? {
-      ...list,
-      updated: stamp(),
-      items: list.items.map((item) => item.id === itemId ? { ...item, checked: !item.checked } : item),
-    } : list),
-  }))
+  const toggleShoppingItem = (listId: string, itemId: string) => setData((current) => {
+    const existingList = current.shoppingLists.find((list) => list.id === listId)
+    const existingItem = existingList?.items.find((item) => item.id === itemId)
+    if (!existingList || !existingItem) return current
+    const item = { ...existingItem, checked: !existingItem.checked }
+    const list = { ...existingList, updated: stamp(), items: existingList.items.map((candidate) => candidate.id === itemId ? item : candidate) }
+    void saveShoppingItem(listId, item, list).catch(reportCloudError)
+    return { ...current, shoppingLists: current.shoppingLists.map((candidate) => candidate.id === listId ? list : candidate) }
+  })
 
   const setNotificationsEnabled = (notificationsEnabled: boolean) => setData((current) => ({
     ...current, settings: { ...current.settings, notificationsEnabled },
@@ -141,7 +216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ), [data.inventory])
 
   return <AppContext.Provider value={{
-    ...data, ready, setDeviceName, setLanguage, addInventoryItem, updateItemStatus,
+    ...data, ready, cloud, connectFamily, disconnectFamily, setDeviceName, setLanguage, addInventoryItem, updateItemStatus,
     createShoppingList, addShoppingItem, toggleShoppingItem, setNotificationsEnabled, recommendations,
   }}>{children}</AppContext.Provider>
 }
