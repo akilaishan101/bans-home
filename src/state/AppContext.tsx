@@ -7,6 +7,7 @@ import {
   disconnectFamily as disconnectCloudFamily,
   deleteLegacyDemoCloudData,
   observeCloudSession,
+  resetCloudHousehold,
   saveInventoryItem,
   saveShoppingItem,
   saveShoppingList,
@@ -17,7 +18,10 @@ import { getExpiryLevel } from '../utils/expiry'
 import { getFrequentInventoryItems } from '../utils/frequency'
 import type { AppData, FrequentInventoryItem, InventoryItem, NewInventoryItem, ShoppingList } from '../types'
 
-const STORAGE_KEY = 'bans-home-data-v1'
+const STORAGE_KEY = 'bans-home-data-v2'
+const CLEAN_START_RELEASE = 'bans-home-clean-start-v0.6'
+const CLEAN_START_DONE_KEY = 'bans-home-clean-start-done'
+const CLEAN_START_PENDING_KEY = 'bans-home-clean-start-cloud-pending'
 
 interface AppContextValue extends AppData {
   ready: boolean
@@ -41,6 +45,10 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(() => createInitialData())
   const [ready, setReady] = useState(false)
+  const [cleanStartPending, setCleanStartPending] = useState(() =>
+    window.localStorage.getItem(CLEAN_START_DONE_KEY) !== CLEAN_START_RELEASE
+      || window.localStorage.getItem(CLEAN_START_PENDING_KEY) === CLEAN_START_RELEASE
+  )
   const [cloud, setCloud] = useState({ configured: cloudConfigured, connected: false, syncing: false, error: '' })
 
   useEffect(() => {
@@ -49,8 +57,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       window.setTimeout(() => resolve(null), 1500)
     })
 
-    void Promise.race([localforage.getItem<AppData>(STORAGE_KEY), storageTimeout])
+    const prepareLocalData = async () => {
+      const needsCleanStart = window.localStorage.getItem(CLEAN_START_DONE_KEY) !== CLEAN_START_RELEASE
+      if (needsCleanStart) {
+        await localforage.clear()
+        window.localStorage.setItem(CLEAN_START_DONE_KEY, CLEAN_START_RELEASE)
+        window.localStorage.setItem(CLEAN_START_PENDING_KEY, CLEAN_START_RELEASE)
+        return null
+      }
+      return Promise.race([localforage.getItem<AppData>(STORAGE_KEY), storageTimeout])
+    }
+
+    void prepareLocalData()
       .then((stored) => {
+        if (active) setCleanStartPending(window.localStorage.getItem(CLEAN_START_PENDING_KEY) === CLEAN_START_RELEASE)
         if (active && stored) {
           const inventory = stored.inventory.map((saved) => {
             const { store: _oldStore, ...item } = saved as InventoryItem & { store?: string }
@@ -86,10 +106,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       stopHousehold?.()
       stopHousehold = undefined
       if (!user) {
+        window.localStorage.removeItem(CLEAN_START_PENDING_KEY)
+        setCleanStartPending(false)
         setCloud((current) => ({ ...current, connected: false, syncing: false }))
         return
       }
       setCloud((current) => ({ ...current, connected: true, syncing: true, error: '' }))
+      if (cleanStartPending) {
+        void resetCloudHousehold(user)
+          .then(() => {
+            window.localStorage.removeItem(CLEAN_START_PENDING_KEY)
+            setData(createInitialData())
+            setCleanStartPending(false)
+            setCloud((current) => ({ ...current, connected: false, syncing: false, error: '' }))
+          })
+          .catch((error: unknown) => {
+            setCloud((current) => ({ ...current, syncing: false, error: error instanceof Error ? error.message : 'Could not reset family cloud data.' }))
+          })
+        return
+      }
       void deleteLegacyDemoCloudData(user)
         .catch((error: unknown) => {
           setCloud((current) => ({ ...current, error: error instanceof Error ? error.message : 'Could not clean old sample data.' }))
@@ -108,7 +143,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
     })
     return () => { sessionVersion += 1; stopSession(); stopHousehold?.() }
-  }, [ready])
+  }, [cleanStartPending, ready])
 
   useEffect(() => {
     if (!ready || !data.settings.notificationsEnabled) return

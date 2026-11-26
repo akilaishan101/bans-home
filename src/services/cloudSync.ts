@@ -14,6 +14,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   initializeFirestore,
   limit,
   onSnapshot,
@@ -159,6 +160,23 @@ export async function deleteLegacyDemoCloudData(user: User) {
   LEGACY_DEMO_SHOPPING_ITEM_IDS.forEach((id) => batch.delete(docAt(database, [...root, 'shoppingItems', id])))
   LEGACY_DEMO_AUDIT_IDS.forEach((id) => batch.delete(docAt(database, [...root, 'audit', id])))
   await batch.commit()
+}
+
+export async function resetCloudHousehold(user: User) {
+  const { auth, database } = services()
+  const root = ['households', user.uid]
+  const collections = ['inventory', 'shoppingLists', 'shoppingItems', 'audit', 'meta']
+  const references = []
+  for (const name of collections) {
+    const snapshot = await getDocs(collectionAt(database, [...root, name]))
+    references.push(...snapshot.docs.map((saved) => saved.ref))
+  }
+  for (let start = 0; start < references.length; start += 400) {
+    const batch = writeBatch(database)
+    references.slice(start, start + 400).forEach((reference) => batch.delete(reference))
+    await batch.commit()
+  }
+  await signOut(auth)
 }
 
 export function subscribeToHousehold(user: User, handlers: CloudSnapshotHandlers) {
