@@ -10,6 +10,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['bans-icon.svg', 'bans-icon-512.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'BANS Home',
@@ -26,8 +27,19 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallback: null,
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        runtimeCaching: [{
+          urlPattern: ({ request }) => request.mode === 'navigate',
+          handler: 'NetworkFirst',
+          options: {
+            cacheName: 'bans-pages',
+            networkTimeoutSeconds: 3,
+          },
+        }],
       },
     }),
   ],
