@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import localforage from 'localforage'
-import { createInitialData } from '../data/demo'
+import { createInitialData, removeLegacyDemoData } from '../data/demo'
 import {
   cloudConfigured,
   connectFamily as connectCloudFamily,
   disconnectFamily as disconnectCloudFamily,
+  deleteLegacyDemoCloudData,
   observeCloudSession,
   saveInventoryItem,
   saveShoppingItem,
@@ -13,7 +14,8 @@ import {
 } from '../services/cloudSync'
 import { scheduleExpiryNotifications } from '../services/notifications'
 import { getExpiryLevel } from '../utils/expiry'
-import type { AppData, InventoryItem, NewInventoryItem, ShoppingList } from '../types'
+import { getFrequentInventoryItems } from '../utils/frequency'
+import type { AppData, FrequentInventoryItem, InventoryItem, NewInventoryItem, ShoppingList } from '../types'
 
 const STORAGE_KEY = 'bans-home-data-v1'
 
@@ -31,6 +33,7 @@ interface AppContextValue extends AppData {
   toggleShoppingItem: (listId: string, itemId: string) => void
   setNotificationsEnabled: (enabled: boolean) => void
   recommendations: InventoryItem[]
+  frequentItems: FrequentInventoryItem[]
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -57,7 +60,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const { store: _oldStore, ...list } = saved as ShoppingList & { store?: string }
             return list
           })
-          setData({ ...stored, inventory, shoppingLists })
+          setData(removeLegacyDemoData({ ...stored, inventory, shoppingLists }))
         }
       })
       .catch((error: unknown) => {
@@ -77,7 +80,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready || !cloudConfigured) return
     let stopHousehold: (() => void) | undefined
+    let sessionVersion = 0
     const stopSession = observeCloudSession((user) => {
+      const version = ++sessionVersion
       stopHousehold?.()
       stopHousehold = undefined
       if (!user) {
@@ -85,17 +90,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return
       }
       setCloud((current) => ({ ...current, connected: true, syncing: true, error: '' }))
-      stopHousehold = subscribeToHousehold(user, {
-        inventory: (inventory) => setData((current) => ({ ...current, inventory })),
-        shoppingLists: (shoppingLists) => setData((current) => ({ ...current, shoppingLists })),
-        auditLog: (auditLog) => {
-          setData((current) => ({ ...current, auditLog }))
-          setCloud((current) => ({ ...current, syncing: false }))
-        },
-        error: (error) => setCloud((current) => ({ ...current, syncing: false, error })),
-      })
+      void deleteLegacyDemoCloudData(user)
+        .catch((error: unknown) => {
+          setCloud((current) => ({ ...current, error: error instanceof Error ? error.message : 'Could not clean old sample data.' }))
+        })
+        .finally(() => {
+          if (version !== sessionVersion) return
+          stopHousehold = subscribeToHousehold(user, {
+            inventory: (inventory) => setData((current) => removeLegacyDemoData({ ...current, inventory })),
+            shoppingLists: (shoppingLists) => setData((current) => removeLegacyDemoData({ ...current, shoppingLists })),
+            auditLog: (auditLog) => {
+              setData((current) => removeLegacyDemoData({ ...current, auditLog }))
+              setCloud((current) => ({ ...current, syncing: false }))
+            },
+            error: (error) => setCloud((current) => ({ ...current, syncing: false, error })),
+          })
+        })
     })
-    return () => { stopSession(); stopHousehold?.() }
+    return () => { sessionVersion += 1; stopSession(); stopHousehold?.() }
   }, [ready])
 
   useEffect(() => {
@@ -214,10 +226,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const recommendations = useMemo(() => data.inventory.filter((item) =>
     item.status === 'available' && (item.quantity <= item.minimumQuantity || getExpiryLevel(item) === 'expired')
   ), [data.inventory])
+  const frequentItems = useMemo(() => getFrequentInventoryItems(data.inventory), [data.inventory])
 
   return <AppContext.Provider value={{
     ...data, ready, cloud, connectFamily, disconnectFamily, setDeviceName, setLanguage, addInventoryItem, updateItemStatus,
-    createShoppingList, addShoppingItem, toggleShoppingItem, setNotificationsEnabled, recommendations,
+    createShoppingList, addShoppingItem, toggleShoppingItem, setNotificationsEnabled, recommendations, frequentItems,
   }}>{children}</AppContext.Provider>
 }
 

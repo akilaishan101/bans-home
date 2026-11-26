@@ -4,7 +4,7 @@ BANS Home is a family inventory and shopping assistant designed for the Balasuri
 
 ## Install the Android prototype
 
-1. Copy `BANS-Home-v0.4-debug.apk` to an Android phone.
+1. Copy `BANS-Home-v0.5-debug.apk` to an Android phone.
 2. Open the file on the phone and allow **Install unknown apps** for the app used to open it (Files, Chrome, Drive, etc.).
 3. Install and open **BANS Home**.
 4. Choose the device name, such as **Father's phone** or **Mother's phone**.
@@ -25,6 +25,7 @@ This is a development-signed APK for family testing, not a Play Store release.
 - Android local notifications, refreshed when inventory changes.
 - Expired, expiring-soon, and low-stock dashboard.
 - Multiple shopping lists, check-off controls, low-stock recommendations, and purchase-pattern starter suggestions.
+- Large everyday-item shortcuts and automatically ranked frequent buys based on the family's real add history.
 - Spending summaries by category/outcome plus inventory and waste value.
 - Secure family synchronization using one shared family code. Inventory, shopping lists, and the device audit trail update across Android and iPhone devices.
 
@@ -67,7 +68,7 @@ Open the native project with `npm run android:open`. The Android application ID 
 ## Verification completed
 
 - Production web/PWA build passes.
-- All automated tests pass (8/8).
+- All automated tests pass (12/12).
 - Native Android Gradle build passes.
-- APK v0.4 installs successfully in the Android 14 emulator.
+- APK v0.5 installs successfully in the Android 14 emulator.
 - Family synchronization UI and Firestore authorization rules were verified, including rejection of cross-household reads.

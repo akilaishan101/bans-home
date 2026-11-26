@@ -82,3 +82,10 @@ export interface NewInventoryItem {
   afterOpenDays?: number
   minimumQuantity: number
 }
+
+export interface FrequentInventoryItem {
+  name: string
+  count: number
+  lastAddedAt: string
+  template: NewInventoryItem
+}

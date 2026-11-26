@@ -1,61 +1,26 @@
-import { addDays, formatISO, subDays } from 'date-fns'
-import type { AppData, DeviceStamp, InventoryItem, ShoppingList } from '../types'
+import type { AppData } from '../types'
 
-const date = (offset: number) => formatISO(addDays(new Date(), offset), { representation: 'date' })
-const past = (offset: number) => formatISO(subDays(new Date(), offset), { representation: 'date' })
+export const LEGACY_DEMO_INVENTORY_IDS = ['milk-1', 'eggs-1', 'rice-1', 'yoghurt-1', 'soap-1']
+export const LEGACY_DEMO_LIST_IDS = ['weekly-list', 'monthly-list']
+export const LEGACY_DEMO_SHOPPING_ITEM_IDS = ['shop-1', 'shop-2']
+export const LEGACY_DEMO_AUDIT_IDS = ['audit-demo']
 
-const stamp: DeviceStamp = {
-  deviceId: 'demo-device',
-  deviceName: "Mother's phone",
-  at: new Date().toISOString(),
+export function removeLegacyDemoData(data: AppData): AppData {
+  return {
+    ...data,
+    inventory: data.inventory.filter((item) => !LEGACY_DEMO_INVENTORY_IDS.includes(item.id)),
+    shoppingLists: data.shoppingLists
+      .filter((list) => !LEGACY_DEMO_LIST_IDS.includes(list.id))
+      .map((list) => ({ ...list, items: list.items.filter((item) => !LEGACY_DEMO_SHOPPING_ITEM_IDS.includes(item.id)) })),
+    auditLog: data.auditLog.filter((entry) => !LEGACY_DEMO_AUDIT_IDS.includes(entry.id)),
+  }
 }
-
-const inventory: InventoryItem[] = [
-  {
-    id: 'milk-1', name: 'Fresh milk', category: 'Dairy', quantity: 1, unit: 'carton',
-    storage: 'Fridge', purchaseDate: past(4), purchasePrice: 530,
-    expiryDate: date(1), minimumQuantity: 1, status: 'available', created: stamp, updated: stamp,
-  },
-  {
-    id: 'eggs-1', name: 'Eggs', category: 'Dairy', quantity: 4, unit: 'eggs',
-    storage: 'Fridge', purchaseDate: past(10), purchasePrice: 720,
-    expiryDate: date(3), minimumQuantity: 6, status: 'available', created: stamp, updated: stamp,
-  },
-  {
-    id: 'rice-1', name: 'Samba rice', category: 'Grains', quantity: 4, unit: 'kg',
-    storage: 'Pantry', purchaseDate: past(35), purchasePrice: 1280,
-    lifetimeDays: 365, minimumQuantity: 2, status: 'available', created: stamp, updated: stamp,
-  },
-  {
-    id: 'yoghurt-1', name: 'Yoghurt', category: 'Dairy', quantity: 2, unit: 'cups',
-    storage: 'Fridge', purchaseDate: past(16), purchasePrice: 240,
-    expiryDate: date(-2), minimumQuantity: 2, status: 'available', created: stamp, updated: stamp,
-  },
-  {
-    id: 'soap-1', name: 'Laundry detergent', category: 'Household', quantity: 0.5, unit: 'kg',
-    storage: 'Other', purchaseDate: past(70), purchasePrice: 970,
-    lifetimeDays: 730, minimumQuantity: 0.5, status: 'available', created: stamp, updated: stamp,
-  },
-]
-
-const shoppingLists: ShoppingList[] = [
-  {
-    id: 'weekly-list', name: 'Weekly groceries', created: stamp, updated: stamp,
-    items: [
-      { id: 'shop-1', name: 'Bread', quantity: 1, unit: 'loaf', checked: false, estimatedPrice: 250, source: 'manual', addedBy: stamp },
-      { id: 'shop-2', name: 'Bananas', quantity: 1, unit: 'kg', checked: true, estimatedPrice: 480, source: 'manual', addedBy: stamp },
-    ],
-  },
-  { id: 'monthly-list', name: 'Monthly household', created: stamp, updated: stamp, items: [] },
-]
 
 export function createInitialData(): AppData {
   return {
-    inventory,
-    shoppingLists,
-    auditLog: [
-      { id: 'audit-demo', action: 'Updated quantity', detail: 'Fresh milk · 1 carton', stamp },
-    ],
+    inventory: [],
+    shoppingLists: [],
+    auditLog: [],
     settings: {
       householdName: 'BANS Home',
       deviceId: crypto.randomUUID(),

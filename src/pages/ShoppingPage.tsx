@@ -43,6 +43,8 @@ export function ShoppingPage() {
 
     {creating && <div className="inline-create"><input autoFocus value={listName} onChange={(e) => setListName(e.target.value)} placeholder="List name" onKeyDown={(e) => e.key === 'Enter' && submitList()} /><button type="button" onClick={submitList}>Create</button><button type="button" onClick={() => setCreating(false)}>Cancel</button></div>}
 
+    {!active && !creating && <section className="shopping-panel empty-state"><IonIcon className="section-icon" icon={cartOutline} /><h2>Create your first shopping list</h2><p>Keep groceries and household essentials together for everyone.</p><button className="primary-action" type="button" onClick={() => setCreating(true)}><IonIcon icon={addOutline} /> {t('createList')}</button></section>}
+
     {active && <>
       <section className="shopping-panel">
         <div className="shopping-panel-head"><div><span className="eyebrow">FAMILY LIST</span><h2>{active.name}</h2></div><div><small>{t('estimatedTotal')}</small><strong>LKR {total.toLocaleString()}</strong></div></div>

@@ -19,7 +19,7 @@ type PageId = 'home' | 'inventory' | 'shopping' | 'stats' | 'settings'
 
 function Shell() {
   const { t } = useTranslation()
-  const { settings, ready, addInventoryItem } = useApp()
+  const { settings, ready, addInventoryItem, frequentItems } = useApp()
   const [page, setPage] = useState<PageId>('home')
   const [addOpen, setAddOpen] = useState(false)
 
@@ -49,7 +49,7 @@ function Shell() {
     <nav className="bottom-nav" aria-label="Main navigation">
       {tabs.map((tab) => <button key={tab.id} type="button" className={page === tab.id ? 'active' : ''} onClick={() => setPage(tab.id)}><IonIcon icon={tab.icon} /><span>{tab.label}</span></button>)}
     </nav>
-    <AddItemModal open={addOpen} onClose={() => setAddOpen(false)} onAdd={addInventoryItem} />
+    <AddItemModal open={addOpen} onClose={() => setAddOpen(false)} onAdd={addInventoryItem} frequentItems={frequentItems} />
   </div>
 }
 

@@ -2,19 +2,20 @@ import { useMemo, useState } from 'react'
 import { IonButton, IonContent, IonInput, IonModal, IonSelect, IonSelectOption } from '@ionic/react'
 import { useTranslation } from 'react-i18next'
 import { formatISO } from 'date-fns'
-import type { NewInventoryItem } from '../types'
-import type { CatalogueProduct } from '../data/productCatalogue'
+import type { FrequentInventoryItem, NewInventoryItem } from '../types'
+import { everydayProducts, type CatalogueProduct } from '../data/productCatalogue'
 import { ProductSuggestions } from './ProductSuggestions'
 
 interface Props {
   open: boolean
   onClose: () => void
   onAdd: (item: NewInventoryItem) => void
+  frequentItems: FrequentInventoryItem[]
 }
 
 const today = formatISO(new Date(), { representation: 'date' })
 
-export function AddItemModal({ open, onClose, onAdd }: Props) {
+export function AddItemModal({ open, onClose, onAdd, frequentItems }: Props) {
   const { t } = useTranslation()
   const defaults = useMemo<NewInventoryItem>(() => ({
     name: '', category: 'Food', quantity: 1, unit: 'item', storage: 'Pantry', purchaseDate: today,
@@ -30,6 +31,13 @@ export function AddItemModal({ open, onClose, onAdd }: Props) {
     unit: product.unit,
   }))
 
+  const selectFrequent = (item: FrequentInventoryItem) => setForm({
+    ...defaults,
+    ...item.template,
+    purchaseDate: today,
+    expiryDate: '',
+  })
+
   const save = () => {
     if (!form.name.trim()) return
     onAdd({ ...form, name: form.name.trim(), expiryDate: form.expiryDate || undefined })
@@ -42,6 +50,14 @@ export function AddItemModal({ open, onClose, onAdd }: Props) {
     <div className="sheet">
       <div className="sheet-handle" />
       <div className="sheet-header"><div><small>BANS HOME</small><h2>{t('addItem')}</h2></div><button type="button" className="close-button" onClick={onClose}>×</button></div>
+      <section className="quick-pick-block everyday-picks">
+        <div><span>EVERYDAY SHORTCUTS</span><p>Tap an essential to fill the form.</p></div>
+        <div className="quick-pick-grid">{everydayProducts.map(({ label, product }) => <button type="button" key={label} onClick={() => selectProduct(product)}><strong>{label}</strong><small>LKR {product.estimatedPrice.toLocaleString()}</small></button>)}</div>
+      </section>
+      {frequentItems.length > 0 && <section className="quick-pick-block frequent-picks">
+        <div><span>YOUR FREQUENT BUYS</span><p>Automatically ranked from items your family adds.</p></div>
+        <div className="quick-pick-row">{frequentItems.map((item) => <button type="button" key={item.name.toLocaleLowerCase()} onClick={() => selectFrequent(item)}><strong>{item.name}</strong><small>Added {item.count} {item.count === 1 ? 'time' : 'times'}</small></button>)}</div>
+      </section>}
       <div className="form-grid">
         <div className="span-2 product-name-field form-field"><label>Item name</label><IonInput aria-label="Item name" value={form.name} placeholder="Type a product name" onIonInput={(e) => setForm({ ...form, name: String(e.detail.value ?? '') })} /><ProductSuggestions query={form.name} onSelect={selectProduct} /><small className="field-help">Suggestions and starting prices come from supermarket websites. Check the receipt price before saving.</small></div>
         <label>Quantity<IonInput type="number" value={form.quantity} onIonInput={(e) => setForm({ ...form, quantity: Number(e.detail.value) || 0 })} /></label>

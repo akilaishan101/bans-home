@@ -35,6 +35,23 @@ export const productCatalogue: CatalogueProduct[] = [
   { name: 'Highland Vanilla Yoghurt 90g', estimatedPrice: 80, category: 'Dairy', unit: 'item', sourceName: 'SPAR', sourceUrl: 'https://spar2u.lk/collections/inventory?page=3', capturedOn: '2026-11-24' },
 ]
 
+const everydayProductNames = [
+  ['Milk', 'Sudhi Fresh Milk 1L'],
+  ['Eggs', 'SPAR Local Medium Eggs 10 Pack'],
+  ['Bread', 'Top Crust Bread 450g'],
+  ['Rice', 'New Rathna Nadu Rice 5kg'],
+  ['Bananas', 'Dole Banana About 1kg'],
+  ['Onions', 'Big Onion 500g'],
+  ['Dhal', 'Star Gold Dhal 1kg'],
+  ['Yoghurt', 'Highland Vanilla Yoghurt 90g'],
+] as const
+
+export const everydayProducts = everydayProductNames
+  .flatMap(([label, name]) => {
+    const product = productCatalogue.find((candidate) => candidate.name === name)
+    return product ? [{ label, product }] : []
+  })
+
 function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 }

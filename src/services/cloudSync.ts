@@ -27,6 +27,12 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import type { AppData, AuditEntry, InventoryItem, ShoppingItem, ShoppingList } from '../types'
+import {
+  LEGACY_DEMO_AUDIT_IDS,
+  LEGACY_DEMO_INVENTORY_IDS,
+  LEGACY_DEMO_LIST_IDS,
+  LEGACY_DEMO_SHOPPING_ITEM_IDS,
+} from '../data/demo'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -142,6 +148,17 @@ export async function connectFamily(code: string, localData: AppData) {
 export async function disconnectFamily() {
   if (!configured) return
   await signOut(services().auth)
+}
+
+export async function deleteLegacyDemoCloudData(user: User) {
+  const { database } = services()
+  const root = ['households', user.uid]
+  const batch = writeBatch(database)
+  LEGACY_DEMO_INVENTORY_IDS.forEach((id) => batch.delete(docAt(database, [...root, 'inventory', id])))
+  LEGACY_DEMO_LIST_IDS.forEach((id) => batch.delete(docAt(database, [...root, 'shoppingLists', id])))
+  LEGACY_DEMO_SHOPPING_ITEM_IDS.forEach((id) => batch.delete(docAt(database, [...root, 'shoppingItems', id])))
+  LEGACY_DEMO_AUDIT_IDS.forEach((id) => batch.delete(docAt(database, [...root, 'audit', id])))
+  await batch.commit()
 }
 
 export function subscribeToHousehold(user: User, handlers: CloudSnapshotHandlers) {
