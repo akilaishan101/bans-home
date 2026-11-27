@@ -4,7 +4,7 @@ BANS Home is a family inventory and shopping assistant designed for the Balasuri
 
 ## Install the Android prototype
 
-1. Copy `BANS-Home-v0.6-debug.apk` to an Android phone.
+1. Copy `BANS-Home-v0.7-debug.apk` to an Android phone.
 2. Open the file on the phone and allow **Install unknown apps** for the app used to open it (Files, Chrome, Drive, etc.).
 3. Install and open **BANS Home**.
 4. Choose the device name, such as **Father's phone** or **Mother's phone**.
@@ -27,7 +27,8 @@ This is a development-signed APK for family testing, not a Play Store release.
 - Multiple shopping lists, check-off controls, low-stock recommendations, and purchase-pattern starter suggestions.
 - Large everyday-item shortcuts and automatically ranked frequent buys based on the family's real add history.
 - Spending summaries by category/outcome plus inventory and waste value.
-- Secure family synchronization using one shared family code. Inventory, shopping lists, and the device audit trail update across Android and iPhone devices.
+- Secure family synchronization using an automatically generated unique household code. Inventory, shopping lists, and the device audit trail update across Android and iPhone devices.
+- Create, join, share, leave, and switch households. Shared join links fill the code automatically.
 
 ## Install on an iPhone
 
@@ -42,7 +43,7 @@ Each device keeps an offline copy in its private browser/app storage. After a fa
 
 The project uses Firebase's no-billing Spark plan and GitHub Pages. A typical family of 8–12 is far below the included quotas. If a free quota is ever exhausted, Firebase rejects additional usage instead of charging because no billing account is attached.
 
-On the first phone, open **Settings → Family sync** and choose a private family code of at least eight characters. Use exactly the same code on every other family phone. There are no separate personal accounts.
+On the first phone, open **Settings → Family sync → Create new household**. The app generates the unique code automatically. Share its join link with the other phones, or enter the displayed code under **Join a household**. There are no separate personal accounts.
 
 ## Important prototype boundary
 
@@ -68,7 +69,7 @@ Open the native project with `npm run android:open`. The Android application ID 
 ## Verification completed
 
 - Production web/PWA build passes.
-- All automated tests pass (12/12).
+- All automated tests pass (15/15).
 - Native Android Gradle build passes.
-- APK v0.6 installs successfully in the Android 14 emulator.
+- APK v0.7 installs successfully in the Android 14 emulator.
 - Family synchronization UI and Firestore authorization rules were verified, including rejection of cross-household reads.

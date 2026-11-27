@@ -3,9 +3,10 @@ import localforage from 'localforage'
 import { createInitialData, removeLegacyDemoData } from '../data/demo'
 import {
   cloudConfigured,
-  connectFamily as connectCloudFamily,
+  createHousehold as createCloudHousehold,
   disconnectFamily as disconnectCloudFamily,
   deleteLegacyDemoCloudData,
+  joinHousehold as joinCloudHousehold,
   observeCloudSession,
   resetCloudHousehold,
   saveInventoryItem,
@@ -26,8 +27,9 @@ const CLEAN_START_PENDING_KEY = 'bans-home-clean-start-cloud-pending'
 interface AppContextValue extends AppData {
   ready: boolean
   cloud: { configured: boolean; connected: boolean; syncing: boolean; error: string }
-  connectFamily: (code: string) => Promise<void>
-  disconnectFamily: () => Promise<void>
+  createHousehold: () => Promise<string>
+  joinHousehold: (code: string) => Promise<void>
+  leaveHousehold: () => Promise<void>
   setDeviceName: (name: string) => void
   setLanguage: (language: 'en' | 'si') => void
   addInventoryItem: (item: NewInventoryItem) => void
@@ -166,21 +168,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCloud((current) => ({ ...current, syncing: false, error: error instanceof Error ? error.message : 'Cloud sync failed.' }))
   }, [])
 
-  const connectFamily = useCallback(async (code: string) => {
+  const createHousehold = useCallback(async () => {
     setCloud((current) => ({ ...current, syncing: true, error: '' }))
     try {
-      await connectCloudFamily(code, data)
+      const result = await createCloudHousehold(data)
+      setData((current) => ({ ...current, settings: { ...current.settings, householdCode: result.code } }))
       setCloud((current) => ({ ...current, connected: true, syncing: false }))
+      return result.code
     } catch (error) {
       reportCloudError(error)
       throw error
     }
   }, [data, reportCloudError])
 
-  const disconnectFamily = useCallback(async () => {
+  const joinHousehold = useCallback(async (code: string) => {
+    setCloud((current) => ({ ...current, syncing: true, error: '' }))
+    try {
+      const result = await joinCloudHousehold(code)
+      setData((current) => ({
+        ...current,
+        inventory: [], shoppingLists: [], auditLog: [],
+        settings: { ...current.settings, householdCode: result.code },
+      }))
+      setCloud((current) => ({ ...current, connected: true, syncing: false }))
+    } catch (error) {
+      reportCloudError(error)
+      throw error
+    }
+  }, [reportCloudError])
+
+  const leaveHousehold = useCallback(async () => {
     setCloud((current) => ({ ...current, syncing: true, error: '' }))
     try {
       await disconnectCloudFamily()
+      setData((current) => ({
+        ...current,
+        inventory: [], shoppingLists: [], auditLog: [],
+        settings: { ...current.settings, householdCode: undefined },
+      }))
       setCloud((current) => ({ ...current, connected: false, syncing: false }))
     } catch (error) {
       reportCloudError(error)
@@ -264,7 +289,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const frequentItems = useMemo(() => getFrequentInventoryItems(data.inventory), [data.inventory])
 
   return <AppContext.Provider value={{
-    ...data, ready, cloud, connectFamily, disconnectFamily, setDeviceName, setLanguage, addInventoryItem, updateItemStatus,
+    ...data, ready, cloud, createHousehold, joinHousehold, leaveHousehold, setDeviceName, setLanguage, addInventoryItem, updateItemStatus,
     createShoppingList, addShoppingItem, toggleShoppingItem, setNotificationsEnabled, recommendations, frequentItems,
   }}>{children}</AppContext.Provider>
 }

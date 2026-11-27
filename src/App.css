@@ -107,6 +107,19 @@
 .family-code-form button:disabled, .disconnect-button:disabled { opacity: .55; cursor: default; }
 .family-code-form p, .sync-message { margin: 0; color: var(--muted); font-size: 12px; }
 .disconnect-button { width: 100%; margin-top: 14px; background: #eef4f0; color: var(--forest); }
+.household-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px 0 2px; }
+.household-choice-grid > button { min-height: 100px; border: 1px solid #cfe0d5; border-radius: 15px; background: #f5faf7; color: var(--forest); display: flex; align-items: center; gap: 12px; padding: 15px; text-align: left; }
+.household-choice-grid ion-icon { flex: 0 0 auto; font-size: 27px; }
+.household-choice-grid span { display: grid; gap: 5px; } .household-choice-grid small { color: var(--muted); font-weight: 400; line-height: 1.35; }
+.back-choice { width: fit-content; padding: 7px 0 !important; background: transparent !important; color: var(--forest) !important; }
+.household-code-card { margin-top: 16px; padding: 18px; border: 1px solid #bcd7c5; border-radius: 16px; background: linear-gradient(135deg, #e7f3eb, #f8fbf9); text-align: center; }
+.household-code-card > small { color: var(--forest); font-weight: 800; letter-spacing: .12em; }
+.household-code-card > strong { display: block; margin: 8px 0 4px; color: var(--ink); font-size: clamp(23px, 5vw, 32px); letter-spacing: .06em; }
+.household-code-card p { margin: 0; color: var(--muted); font-size: 12px; }
+.household-code-card > div { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+.household-code-card button { border: 1px solid #b8d2c1; border-radius: 11px; background: white; color: var(--forest); display: flex; align-items: center; gap: 6px; padding: 10px 12px; font-weight: 750; }
+.household-code-card > span { display: block; margin-top: 9px; color: var(--forest); font-size: 12px; font-weight: 700; }
+.disconnect-button ion-icon { margin-right: 6px; vertical-align: middle; }
 .sync-message.error { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #fff2f0; color: var(--red); }
 .segmented { display: flex !important; flex-direction: row !important; width: fit-content; padding: 3px; border-radius: 10px; background: #eef2ef; }
 .segmented button { border: 0; border-radius: 8px; padding: 7px 12px; color: var(--muted); background: transparent; } .segmented button.active { color: var(--forest); background: white; box-shadow: 0 2px 8px rgba(35,55,43,.1); }
@@ -170,5 +183,6 @@
   .shopping-row { grid-template-columns: auto 1fr; } .shopping-row em { grid-column: 2; }
   .form-grid { grid-template-columns: 1fr; } .form-grid .span-2 { grid-column: auto; }
   .quick-pick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .household-choice-grid { grid-template-columns: 1fr; }
   .onboarding-card { padding: 26px 20px; } .bottom-nav { grid-template-columns: repeat(5, 1fr); }
 }

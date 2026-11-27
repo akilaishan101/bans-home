@@ -20,7 +20,7 @@ type PageId = 'home' | 'inventory' | 'shopping' | 'stats' | 'settings'
 function Shell() {
   const { t } = useTranslation()
   const { settings, ready, addInventoryItem, frequentItems } = useApp()
-  const [page, setPage] = useState<PageId>('home')
+  const [page, setPage] = useState<PageId>(() => new URLSearchParams(window.location.search).has('join') ? 'settings' : 'home')
   const [addOpen, setAddOpen] = useState(false)
 
   useEffect(() => { void i18n.changeLanguage(settings.language) }, [settings.language])

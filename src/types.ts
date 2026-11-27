@@ -55,6 +55,7 @@ export interface AuditEntry {
 
 export interface AppSettings {
   householdName: string
+  householdCode?: string
   deviceId: string
   deviceName: string
   language: Language

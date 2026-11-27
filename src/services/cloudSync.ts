@@ -34,6 +34,7 @@ import {
   LEGACY_DEMO_LIST_IDS,
   LEGACY_DEMO_SHOPPING_ITEM_IDS,
 } from '../data/demo'
+import { generateHouseholdCode, householdCredentials } from '../utils/householdCode'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -44,7 +45,6 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-const FAMILY_EMAIL = import.meta.env.VITE_FIREBASE_FAMILY_EMAIL || 'family@bans-home.app'
 const configured = Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId)
 
 let app: FirebaseApp | null = null
@@ -82,8 +82,8 @@ function services() {
 
 function friendlyError(error: unknown) {
   const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : ''
-  if (code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('email-already-in-use')) {
-    return 'That family code is incorrect.'
+  if (code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('user-not-found')) {
+    return 'That household code was not found.'
   }
   if (code.includes('weak-password')) return 'Use a family code with at least 8 characters.'
   if (code.includes('network-request-failed')) return 'No internet connection. Your local data is still safe.'
@@ -127,20 +127,29 @@ export function observeCloudSession(handler: (user: User | null) => void) {
   return onAuthStateChanged(auth, handler)
 }
 
-export async function connectFamily(code: string, localData: AppData) {
-  if (code.trim().length < 8) throw new Error('Use a family code with at least 8 characters.')
+export async function createHousehold(localData: AppData) {
+  const { auth } = services()
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const credentials = householdCredentials(generateHouseholdCode())
+    try {
+      const user = (await createUserWithEmailAndPassword(auth, credentials.email, credentials.password)).user
+      await seedHousehold(user, localData)
+      return { user, code: credentials.code }
+    } catch (error) {
+      const errorCode = typeof error === 'object' && error && 'code' in error ? String(error.code) : ''
+      if (errorCode.includes('email-already-in-use')) continue
+      throw new Error(friendlyError(error))
+    }
+  }
+  throw new Error('Could not generate a unique household code. Please try again.')
+}
+
+export async function joinHousehold(code: string) {
   const { auth } = services()
   try {
-    let user: User
-    try {
-      user = (await signInWithEmailAndPassword(auth, FAMILY_EMAIL, code)).user
-    } catch (signInError) {
-      const errorCode = typeof signInError === 'object' && signInError && 'code' in signInError ? String(signInError.code) : ''
-      if (!errorCode.includes('invalid-credential') && !errorCode.includes('user-not-found')) throw signInError
-      user = (await createUserWithEmailAndPassword(auth, FAMILY_EMAIL, code)).user
-    }
-    await seedHousehold(user, localData)
-    return user
+    const credentials = householdCredentials(code)
+    const user = (await signInWithEmailAndPassword(auth, credentials.email, credentials.password)).user
+    return { user, code: credentials.code }
   } catch (error) {
     throw new Error(friendlyError(error))
   }
